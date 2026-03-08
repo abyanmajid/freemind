@@ -22,6 +22,7 @@
 /*$Id: MacChanges.java.not_here,v 1.1.4.6.2.9 2009/05/19 18:28:12 christianfoltin Exp $*/
 package accessories.plugins;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -29,10 +30,6 @@ import java.net.URL;
 import java.util.logging.Logger;
 
 import javax.swing.SwingUtilities;
-
-import com.apple.eawt.Application;
-import com.apple.eawt.ApplicationAdapter;
-import com.apple.eawt.ApplicationEvent;
 
 import freemind.controller.Controller;
 import freemind.controller.Controller.LocalLinkConverter;
@@ -42,14 +39,15 @@ import freemind.main.Tools;
 
 /**
  * This plugin changes some things for mac users.
- * 
+ * Migrated from deprecated com.apple.eawt to java.awt.Desktop API.
+ *
  * @author foltin
  */
-public class MacChanges extends ApplicationAdapter {
+public class MacChanges {
 
 	private Logger logger;
 
-	private static Application fmMacApplication;
+	private static boolean fmMacApplicationRegistered = false;
 
 	private final FreeMindMain mFrame;
 
@@ -77,58 +75,44 @@ public class MacChanges extends ApplicationAdapter {
 				}
 			}
 		};
-		if (fmMacApplication == null) {
-			// if a handleOpen comes here, directly, we know that FM is
-			// currently starting.
+		if (!fmMacApplicationRegistered) {
 			mIsStartupPhase = true;
 			logger.info("Adding application listener.");
-			fmMacApplication = Application.getApplication();
-			fmMacApplication.addApplicationListener(this);
-			fmMacApplication.addPreferencesMenuItem();
-			fmMacApplication.addAboutMenuItem();
-			fmMacApplication.setEnabledPreferencesMenu(true);
-			// fmMacApplication.removePreferencesMenuItem();
+			Desktop desktop = Desktop.getDesktop();
+			desktop.setQuitHandler((e, response) -> {
+				SwingUtilities.invokeLater(() -> {
+					mFrame.getController().quit.actionPerformed(null);
+				});
+				response.cancelQuit();
+			});
+			desktop.setAboutHandler(e -> {
+				mFrame.getController().about.actionPerformed(null);
+			});
+			desktop.setPreferencesHandler(e -> {
+				mFrame.getController().propertyAction.actionPerformed(null);
+			});
+			desktop.setOpenFileHandler(e -> {
+				try {
+					for (File file : e.getFiles()) {
+						String filename = file.getAbsolutePath();
+						if (mIsStartupPhase) {
+							logger.info("Later loading " + filename);
+							mFrame.setProperty(FreeMindCommon.LOAD_EVENT_DURING_STARTUP
+									+ loadEventsDuringStartup, filename);
+							++loadEventsDuringStartup;
+						} else {
+							logger.info("Direct loading " + filename);
+							mFrame.getController().getModeController()
+									.load(Tools.fileToUrl(file));
+						}
+					}
+				} catch (Exception ex) {
+					freemind.main.Resources.getInstance().logException(ex);
+				}
+			});
+			fmMacApplicationRegistered = true;
 			mIsStartupPhase = false;
 		}
 		logger.info("Performed Mac Changes.");
-	}
-
-	public void handleQuit(ApplicationEvent event) {
-		SwingUtilities.invokeLater(new Runnable() {
-			public void run() {
-				mFrame.getController().quit.actionPerformed(null);
-			}
-		});
-		event.setHandled(true);
-		// this is intentionally done:
-		throw new IllegalStateException("Stop Pending User Confirmation");
-	}
-
-	public void handleAbout(ApplicationEvent event) {
-		mFrame.getController().about.actionPerformed(null);
-		event.setHandled(true);
-	}
-
-	public void handleOpenFile(final ApplicationEvent event) {
-		try {
-			if (mIsStartupPhase) {
-				logger.info("Later loading " + event.getFilename());
-				mFrame.setProperty(FreeMindCommon.LOAD_EVENT_DURING_STARTUP
-						+ loadEventsDuringStartup, event.getFilename());
-				++loadEventsDuringStartup;
-			} else {
-				logger.info("Direct loading " + event.getFilename());
-				mFrame.getController().getModeController()
-						.load(Tools.fileToUrl(new File(event.getFilename())));
-			}
-			event.setHandled(true);
-		} catch (Exception e) {
-			freemind.main.Resources.getInstance().logException(e);
-		}
-	}
-
-	public void handlePreferences(ApplicationEvent event) {
-		mFrame.getController().propertyAction.actionPerformed(null);
-		event.setHandled(true);
 	}
 }
