@@ -274,7 +274,8 @@
 			<os family="mac"/>
 		</condition>
 		<antcall target="dist_icon"/>
-		<antcall target="dist_macos"/>
+		<!-- disabled: AppBundler fails with SDKMAN-installed JDKs (missing Info.plist) -->
+		<!-- <antcall target="dist_macos"/> -->
 	</target>
 
 	<target name="dist_icon">
