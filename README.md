@@ -1,6 +1,8 @@
-freemind but it actually builds on mac !
+freemind but it actually builds on mac ;p
 
 you'll need java 17 and apache ant.
+
+you might also need to install some missing macos dependencies. just ask your coding agent to brew it.
 
 ```sh
 # brew
