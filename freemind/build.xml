@@ -167,6 +167,8 @@
 			<!-- Currently, JUnit tests are only supported inside eclipse due to
 		     classpath problems of the plugins. -->
 			<exclude name="tests/**" />
+			<exclude name="plain_click_tests/**" />
+			<exclude name="05_bottom_up_testing/**" />
 			<exclude name="plugins/**" />
 		</javac>
 		<ant antfile="${acc_build}" target="build"/>
@@ -206,9 +208,39 @@
             <formatter type="xml" />
 			<batchtest todir="${test.reports}" >
 				<fileset dir="${src}">
-					<include name="tests/**/AllTests.java" />
+					<include name="plain_click_tests/*Test.java" />
 				</fileset>
 			</batchtest>
+			<!-- Tests in 05_bottom_up_testing live in the default package
+			     (the folder name starts with a digit, which is not a valid
+			     Java package identifier). List them explicitly by their
+			     simple class name so junit can load them. -->
+			<test name="LastOpenedListTest"          todir="${test.reports}" />
+			<test name="LastOpenedListBottomUpTest"  todir="${test.reports}" />
+		</junit>
+	</target>
+
+	<!-- Runs only the 05_bottom_up_testing suite, for clean screenshot
+	     output. Use `ant test` for the full run including teammates'
+	     plain_click_tests. -->
+	<target name="test-bottom-up" depends="build_tests"
+	        description="Run only the LastOpenedList bottom-up tests">
+		<delete dir="${test.reports}" />
+		<mkdir dir="${test.reports}" />
+		<!-- showoutput="false" hides stdout/stderr from the tests themselves.
+		     Three of the tests intentionally trigger exceptions inside
+		     LastOpenedList and LastStateStorageManagement to verify the
+		     catch-block recovery paths; those exceptions are logged by
+		     FreeMind's own Resources.logException and would otherwise spam
+		     the console. Test results (pass/fail) are unaffected. -->
+		<junit showoutput="false" printsummary="on" fork="yes" haltonfailure="yes">
+			<classpath refid="jars.path" />
+			<classpath path="${testbuild}" />
+			<classpath path="${src}" />
+			<formatter type="plain" usefile="false" />
+			<formatter type="xml" />
+			<test name="LastOpenedListTest"          todir="${test.reports}" />
+			<test name="LastOpenedListBottomUpTest"  todir="${test.reports}" />
 		</junit>
 	</target>
 

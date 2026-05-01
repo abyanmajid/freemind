@@ -23,6 +23,8 @@
 
 package freemind.modes.mindmapmode.actions;
 
+import java.awt.event.ActionEvent;
+
 import javax.swing.Action;
 import javax.swing.ImageIcon;
 import javax.swing.KeyStroke;
@@ -30,6 +32,7 @@ import javax.swing.KeyStroke;
 import freemind.controller.actions.generated.instance.RemoveIconXmlAction;
 import freemind.main.Tools;
 import freemind.modes.IconInformation;
+import freemind.modes.MindMapNode;
 import freemind.modes.mindmapmode.MindMapController;
 
 /**
@@ -47,7 +50,31 @@ public class RemoveIconAction extends NodeGeneralAction implements
 		setDoActionClass(RemoveIconXmlAction.class);
 	}
 
-	
+	@Override
+	public void xmlActionPerformed(ActionEvent e) {
+		int totalBeforeCount = 0;
+		boolean hadIcons = false;
+		for (Object o : getMindMapController().getSelecteds()) {
+			MindMapNode selected = (MindMapNode) o;
+			int count = selected.getIcons().size();
+			totalBeforeCount += count;
+			if (count > 0) {
+				hadIcons = true;
+			}
+		}
+		IconAction.logTransition("S0", "S1", "I_node_selected",
+				"node_selected", totalBeforeCount, "remove_last_icon", "");
+		IconAction.logTransition("S1", "S3", "I_click_remove",
+				"remove_evaluated", totalBeforeCount, "remove_last_icon", "");
+		if (hadIcons) {
+			IconAction.logTransition("S3", "S4", "I_eval_has_icons",
+					"icons_removed", totalBeforeCount, "remove_last_icon", "");
+		} else {
+			IconAction.logTransition("S3", "S5", "I_eval_no_icons",
+					"noop_no_icons", totalBeforeCount, "remove_last_icon", "");
+		}
+		super.xmlActionPerformed(e);
+	}
 
 	/**
 	 * @param iconAction

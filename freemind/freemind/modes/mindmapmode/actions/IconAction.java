@@ -24,12 +24,18 @@
 package freemind.modes.mindmapmode.actions;
 
 import java.awt.event.ActionEvent;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import javax.swing.Action;
 import javax.swing.ImageIcon;
 import javax.swing.KeyStroke;
 
 import freemind.controller.actions.generated.instance.AddIconAction;
+import freemind.main.Resources;
 import freemind.main.Tools;
 import freemind.modes.IconInformation;
 import freemind.modes.MindIcon;
@@ -42,13 +48,48 @@ public class IconAction extends MindmapAction implements IconInformation {
 	public MindIcon icon;
 	private final MindMapController modeController;
 
+	private static final String ICON_FSM_LOG_FILE_NAME = "icon_fsm_events.log";
+
 	public IconAction(MindMapController controller, MindIcon _icon,
 			RemoveIconAction removeLastIconAction) {
 		super(_icon.getDescription(), _icon.getIcon(), controller);
 		this.modeController = controller;
 		putValue(Action.SHORT_DESCRIPTION, _icon.getDescription());
 		this.icon = _icon;
-		
+	}
+
+	public static void logTransition(String fromState, String toState,
+			String input, String outcome, int nodeIconCountBefore,
+			String button, String iconName) {
+		logEvent("transition", "from=" + fromState + "|to=" + toState
+				+ "|input=" + input + "|outcome=" + outcome
+				+ "|node_icon_count_before=" + nodeIconCountBefore
+				+ "|button=" + button + "|icon=" + iconName);
+	}
+
+	public static void logEvent(String eventType, String details) {
+		BufferedWriter writer = null;
+		try {
+			File logFile = new File(Resources.getInstance()
+					.getFreemindDirectory(), ICON_FSM_LOG_FILE_NAME);
+			String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+					.format(new Date());
+			writer = new BufferedWriter(new FileWriter(logFile, true));
+			writer.write(timestamp + "|event=" + eventType + "|" + details);
+			writer.newLine();
+		} catch (Exception ex) {
+			Resources.getInstance().logException(ex,
+					"Failed writing icon FSM event log.");
+		} finally {
+			if (writer != null) {
+				try {
+					writer.close();
+				} catch (Exception closeEx) {
+					Resources.getInstance().logException(closeEx,
+							"Failed closing icon FSM event log.");
+				}
+			}
+		}
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -78,7 +119,12 @@ public class IconAction extends MindmapAction implements IconInformation {
 
 	private void addLastIcon() {
 		for (MindMapNode selected : modeController.getSelecteds()) {
+			int beforeCount = selected.getIcons().size();
+			logTransition("S0", "S1", "I_node_selected", "node_selected",
+					beforeCount, "specific_icon", icon.getName());
 			getAddIconActor().addIcon(selected, icon);
+			logTransition("S1", "S2", "I_add_icon", "icon_appended",
+					beforeCount, "specific_icon", icon.getName());
 		}
 	}
 
